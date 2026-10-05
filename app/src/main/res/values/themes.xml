@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.AIUpscaler" parent="android:Theme.Material.NoActionBar" />
+</resources>
