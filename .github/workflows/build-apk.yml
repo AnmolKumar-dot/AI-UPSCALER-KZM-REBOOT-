@@ -19,15 +19,21 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # Provides $ANDROID_HOME (cmdline-tools + platform 34 + build-tools) without any manual setup.
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       # Gradle 8.9 satisfies AGP 8.5.2 (needs >= 8.7); no gradle wrapper is checked into this repo.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+
+      # Installs cmdline-tools, platform 34 and matching build-tools; sets ANDROID_HOME/ANDROID_SDK_ROOT.
+      - name: Install Android SDK components
+        run: |
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          curl -fsSLo /tmp/clt.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          python3 -m zipfile -e /tmp/clt.zip "$ANDROID_HOME/cmdline-tools"
+          mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Assemble debug APK
         run: gradle --no-daemon assembleDebug
