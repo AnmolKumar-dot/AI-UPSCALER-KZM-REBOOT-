@@ -25,7 +25,7 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      # Installs cmdline-tools, platform 34 and matching build-tools; sets ANDROID_HOME/ANDROID_SDK_ROOT.
+      # Installs cmdline-tools, platform 34 and matching build-tools; ANDROID_HOME is preset on GitHub runners.
       - name: Install Android SDK components
         run: |
           mkdir -p "$ANDROID_HOME/cmdline-tools"
@@ -38,18 +38,20 @@ jobs:
       - name: Assemble debug APK
         id: build
         continue-on-error: true
-        run: gradle --no-daemon assembleDebug
+        run: gradle --no-daemon assembleDebug 2>&1 | tee /tmp/gradle.log
 
-      # Job logs need admin rights to read via API; this makes the real error visible in the public log.
+      # Job logs need admin rights to read via API; echo the real error so it shows in the public log.
       - name: Print build errors (diagnostics)
-        if: failure() && steps.build.outcome == 'failure'
+        if: always()
         run: |
-          echo "=== last 200 lines of Gradle output ==="
-          tail -n 200 "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
-          gradle --no-daemon assembleDebug --stacktrace 2>&1 | tail -n 250
-          exit ${{ steps.build.outputs.conclusion == 'success' && 0 || 1 }}
+          echo "### Gradle output (last 250 lines)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          tail -n 250 /tmp/gradle.log >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          test "${{ steps.build.outcome }}" = "success"
 
       - name: Upload APK artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
