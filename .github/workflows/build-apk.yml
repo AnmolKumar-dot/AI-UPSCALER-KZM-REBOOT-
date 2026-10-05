@@ -40,15 +40,17 @@ jobs:
         continue-on-error: true
         run: gradle --no-daemon assembleDebug 2>&1 | tee /tmp/gradle.log
 
-      # Job logs need admin rights to read via API; echo the real error so it shows in the public log.
-      - name: Print build errors (diagnostics)
+      # Job logs need admin rights to read via API; publish the full Gradle output as a downloadable artifact.
+      - name: Publish Gradle log
         if: always()
-        run: |
-          echo "### Gradle output (last 250 lines)" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          tail -n 250 /tmp/gradle.log >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          test "${{ steps.build.outcome }}" = "success"
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-log
+          path: /tmp/gradle.log
+          if-no-files-found: warn
+
+      - name: Fail if build failed
+        run: test "${{ steps.build.outcome }}" = "success"
 
       - name: Upload APK artifact
         if: success()
